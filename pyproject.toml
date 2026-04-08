@@ -3,7 +3,16 @@ name = "truth-guardian-vak"
 version = "1.0.0"
 description = "AI-powered scam detection system"
 requires-python = ">=3.10"
+dependencies = [
+    "gradio>=4.0.0",
+    "fastapi",
+    "uvicorn",
+    "openenv-core>=0.2.0",
+]
+
+[project.scripts]
+server = "app:main"
 
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.backends.legacy:build"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
