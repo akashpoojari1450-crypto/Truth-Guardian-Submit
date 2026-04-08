@@ -16,161 +16,110 @@ import uvicorn
 scam_db = []
 campaign_clusters = defaultdict(list)
 
-def get_scam_dna(text):
-    return hashlib.blake2b(text.lower().strip().encode(), digest_size=8).hexdigest()
-
-def get_campaign_dna(text):
-    """Coarse fingerprint for clustering similar scams"""
-    words = sorted(set(text.lower().split()))[:10]
-    return hashlib.md5(" ".join(words).encode()).hexdigest()[:8]
-
 def scan_for_fraud_dna(text):
     text_lower = text.lower()
     threat_signals = {
-        "urgency": ["urgent", "immediately", "act now", "limited time", "expires", "fast", "asap"],
-        "financial": ["bank", "account", "tax", "payment", "unpaid", "transfer", "kyc", "otp", "fine", "inr", "money"],
-        "reward": ["win", "prize", "gift card", "lottery", "congratulations", "claimed", "free"],
-        "links": ["click here", "verify here", "bit.ly", "tinyurl", "login", "http", "https"],
-        "fear": ["arrest", "blocked", "suspended", "legal action", "police", "court", "lawsuit"]
+        "urgency": ["urgent", "immediately", "act now", "limited time", "expires", "asap"],
+        "financial": ["bank", "account", "tax", "payment", "unpaid", "transfer", "kyc", "otp", "fine", "money"],
+        "reward": ["win", "prize", "gift card", "lottery", "congratulations", "free"],
+        "links": ["click here", "verify here", "bit.ly", "tinyurl", "login"],
+        "otp": ["otp", "one time password", "verification code", "do not share"],
     }
+    
     score = 0
-    categories = []
+    triggered = []
     for category, keywords in threat_signals.items():
-        if any(word in text_lower for word in keywords):
-            score += 1
-            categories.append(category.upper())
-    return score >= 1, categories
-
-def hunter_protocol_engine(user_input):
-    if not user_input or len(user_input.strip()) == 0:
-        return "🔱 System Online. Awaiting input...", get_dashboard()
-
-    dna = get_scam_dna(user_input)
-    campaign_id = get_campaign_dna(user_input)
-    token = f"VAK-{secrets.token_hex(3).upper()}"
-    is_scam, triggered = scan_for_fraud_dna(user_input)
-
-    # Check if seen before
-    existing = [s for s in scam_db if s["dna"] == dna]
-    seen_before = len(existing) > 0
-
-    # Store in DB
+        for kw in keywords:
+            if kw in text_lower:
+                score += 1
+                triggered.append(f"{category}:{kw}")
+    
+    if score == 0:
+        verdict = "✅ SAFE"
+        risk = "Low"
+    elif score <= 2:
+        verdict = "⚠️ SUSPICIOUS"
+        risk = "Medium"
+    else:
+        verdict = "🚨 SCAM DETECTED"
+        risk = "High"
+    
+    dna = hashlib.md5(text_lower.encode()).hexdigest()[:12]
+    
     entry = {
+        "id": secrets.token_hex(4),
+        "text": text[:100],
+        "verdict": verdict,
+        "risk": risk,
+        "score": score,
+        "signals": triggered,
         "dna": dna,
-        "campaign_id": campaign_id,
-        "is_scam": is_scam,
-        "categories": triggered,
-        "timestamp": datetime.now().isoformat(),
-        "is_otp": user_input.isdigit() and 4 <= len(user_input) <= 8
+        "timestamp": datetime.now().strftime("%H:%M:%S")
     }
     scam_db.append(entry)
-    campaign_clusters[campaign_id].append(dna)
-
-    campaign_count = len(campaign_clusters[campaign_id])
-    header = f"🔱 SCAM DNA: {dna} | CAMPAIGN: {campaign_id} | TOKEN: {token}\n"
-    header += "-" * 55 + "\n"
-
-    if seen_before:
-        header += f"⚠️ DUPLICATE DETECTED — This exact message seen before!\n"
-
-    if campaign_count > 1:
-        header += f"🕵️ CAMPAIGN ALERT — {campaign_count} similar messages from same scam gang!\n"
-
-    if entry["is_otp"]:
-        mock_ips = ["103.22.201.45", "182.72.10.198", "49.36.120.12"]
-        locations = ["New Delhi", "Mumbai Proxy", "Kasaragod Node"]
-        result = (f"{header}"
-                  f"⚠️ OTP DETECTED: {user_input}\n"
-                  f"🚨 HIGH RISK - DO NOT SHARE\n"
-                  f"🛡️ BLOCKED SESSION\n"
-                  f"🔍 TRACE IP: {random.choice(mock_ips)}\n"
-                  f"📍 LOCATION: {random.choice(locations)}")
-    elif is_scam:
-        result = (f"{header}"
-                  f"🚨 FRAUD DETECTED: {', '.join(triggered)}\n"
-                  f"🛡️ ACTION: BLOCKED\n"
-                  f"📡 LOGGED TO SCAM DNA DATABASE\n"
-                  f"🧬 CAMPAIGN ID: {campaign_id}")
-    else:
-        result = f"{header}✅ SAFE CONTENT - NO THREATS DETECTED"
-
-    return result, get_dashboard()
+    
+    result = f"**Verdict:** {verdict}\n"
+    result += f"**Risk Level:** {risk}\n"
+    result += f"**Threat Score:** {score}\n"
+    result += f"**Scam DNA:** `{dna}`\n"
+    if triggered:
+        result += f"**Signals:** {', '.join(triggered)}\n"
+    
+    return result
 
 def get_dashboard():
     total = len(scam_db)
-    scams = [s for s in scam_db if s["is_scam"]]
-    otps = [s for s in scam_db if s["is_otp"]]
-    campaigns = len(campaign_clusters)
-    repeat_campaigns = {k: v for k, v in campaign_clusters.items() if len(v) > 1}
+    if total == 0:
+        return "No scans yet. Try scanning some text!"
+    scams = sum(1 for x in scam_db if "SCAM" in x["verdict"])
+    suspicious = sum(1 for x in scam_db if "SUSPICIOUS" in x["verdict"])
+    safe = sum(1 for x in scam_db if "SAFE" in x["verdict"])
+    
+    dash = f"**📊 Dashboard**\n\n"
+    dash += f"Total Scans: {total}\n"
+    dash += f"🚨 Scams: {scams}\n"
+    dash += f"⚠️ Suspicious: {suspicious}\n"
+    dash += f"✅ Safe: {safe}\n\n"
+    dash += "**Recent Scans:**\n"
+    for entry in scam_db[-5:][::-1]:
+        dash += f"- [{entry['timestamp']}] {entry['verdict']} | DNA:`{entry['dna']}`\n"
+    return dash
 
-    cats = defaultdict(int)
-    for s in scams:
-        for c in s["categories"]:
-            cats[c] += 1
-
-    top_cats = sorted(cats.items(), key=lambda x: -x[1])[:3]
-    top_str = " | ".join([f"{c}: {n}" for c, n in top_cats]) if top_cats else "None"
-
-    dashboard = f"""📊 SCAM INTELLIGENCE DASHBOARD
-{'='*45}
-📥 Total Scans      : {total}
-🚨 Scams Detected   : {len(scams)} ({int(len(scams)/total*100) if total else 0}%)
-🔐 OTPs Blocked     : {len(otps)}
-🧬 Unique Campaigns : {campaigns}
-🕵️ Repeat Campaigns : {len(repeat_campaigns)}
-📈 Top Categories   : {top_str}
-{'='*45}"""
-
-    if repeat_campaigns:
-        dashboard += "\n⚠️ ACTIVE SCAM CAMPAIGNS:\n"
-        for cid, dnas in list(repeat_campaigns.items())[:3]:
-            dashboard += f"  🔴 Campaign {cid}: {len(dnas)} messages intercepted\n"
-
-    return dashboard
-
-# ============================================
-# GRADIO UI
-# ============================================
-with gr.Blocks(title="Truth Guardian VAK ∞", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("# 🔱 Truth Guardian VAK — Scam DNA Intelligence")
-    gr.Markdown("### World's First Scam Campaign Fingerprinting System")
-    gr.Markdown("---")
-
+with gr.Blocks(title="Truth Guardian VAK") as demo:
+    gr.Markdown("# 🛡️ Truth Guardian VAK\n**AI Scam Detection & Campaign Fingerprinting**")
     with gr.Row():
-        with gr.Column(scale=1):
-            inp = gr.Textbox(label="📝 Input Message", placeholder="Paste any message, SMS, or OTP...", lines=5)
-            with gr.Row():
-                btn = gr.Button("🚀 Scan & Fingerprint", variant="primary")
-                clear = gr.Button("🗑️ Clear", variant="secondary")
-            gr.Markdown("### 🎯 Detection Capabilities")
-            gr.Markdown("- ⚡ Urgency · 💰 Financial · 🎁 Reward\n- 🔗 Links · 😨 Fear · 🔐 OTP\n- 🧬 Campaign Clustering · 👥 Duplicate Detection")
+        with gr.Column():
+            text_input = gr.Textbox(label="Enter text to scan", lines=4, placeholder="Paste suspicious message here...")
+            scan_btn = gr.Button("🔍 Scan for Scams", variant="primary")
+            result_output = gr.Markdown(label="Result")
+        with gr.Column():
+            dash_btn = gr.Button("📊 Refresh Dashboard")
+            dash_output = gr.Markdown()
+    
+    scan_btn.click(scan_for_fraud_dna, inputs=text_input, outputs=result_output)
+    dash_btn.click(get_dashboard, outputs=dash_output)
 
-        with gr.Column(scale=1):
-            out = gr.Textbox(label="🛡️ Analysis Output", lines=10, interactive=False)
-            dashboard = gr.Textbox(label="📊 Live Intelligence Dashboard", lines=12, interactive=False,
-                                   value=get_dashboard())
-
-    btn.click(hunter_protocol_engine, inputs=inp, outputs=[out, dashboard])
-    clear.click(lambda: ("", get_dashboard()), None, [inp, dashboard])
-
-# ============================================
-# FASTAPI
-# ============================================
-fastapi_app = FastAPI()
+fastapi_app = FastAPI(title="Truth Guardian API")
 
 @fastapi_app.post("/reset")
 def reset():
-    return JSONResponse({"status": "ok"})
+    global scam_db, campaign_clusters
+    scam_db = []
+    campaign_clusters = defaultdict(list)
+    return JSONResponse({"status": "ok", "message": "Environment reset successfully"})
 
 @fastapi_app.get("/health")
 def health():
-    return JSONResponse({"status": "healthy"})
+    return JSONResponse({"status": "healthy", "service": "Truth Guardian VAK"})
 
-gradio_app = gr.routes.App.create_app(demo)
-fastapi_app.mount("/", gradio_app)
+@fastapi_app.get("/info")
+def info():
+    return JSONResponse({"name": "Truth Guardian VAK", "version": "1.0.0"})
+
+app = gr.mount_gradio_app(fastapi_app, demo, path="/")
 
 def main():
-    uvicorn.run(fastapi_app, host="0.0.0.0", port=7860)
+    uvicorn.run(app, host="0.0.0.0", port=7860)
 
 if __name__ == "__main__":
     main()
