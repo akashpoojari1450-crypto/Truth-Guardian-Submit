@@ -1,0 +1,9 @@
+[project]
+name = "truth-guardian-vak"
+version = "1.0.0"
+description = "AI-powered scam detection system"
+requires-python = ">=3.10"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.backends.legacy:build"
