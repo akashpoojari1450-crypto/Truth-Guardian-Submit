@@ -171,3 +171,9 @@ fastapi_app.mount("/", gradio_app)
 
 if __name__ == "__main__":
     uvicorn.run(fastapi_app, host="0.0.0.0", port=7860)
+
+def main():
+    uvicorn.run(app, host="0.0.0.0", port=7860)
+
+if __name__ == "__main__":
+    main()
