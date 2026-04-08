@@ -1,11 +1,11 @@
 import gradio as gr
-from gradio import mount_gradio_app
-from fastapi import FastAPI
-import uvicorn
 import hashlib
 import secrets
 import random
 from datetime import datetime
+from fastapi import FastAPI
+from gradio.routes import mount_gradio_app
+import uvicorn
 
 # ============================================
 # SCAM DETECTION FUNCTIONS
@@ -111,17 +111,17 @@ with gr.Blocks(title="Truth Guardian VAK", theme=gr.themes.Soft()) as demo:
 fastapi_app = FastAPI(title="Truth Guardian API", description="Scam Detection API")
 
 @fastapi_app.post("/reset")
-async def reset():
+def reset():
     """Reset endpoint for OpenEnv"""
     return {"status": "ok", "message": "Environment reset successfully"}
 
 @fastapi_app.get("/health")
-async def health():
+def health():
     """Health check endpoint"""
     return {"status": "healthy", "service": "Truth Guardian VAK"}
 
 @fastapi_app.get("/info")
-async def info():
+def info():
     """Info endpoint"""
     return {
         "name": "Truth Guardian VAK",
