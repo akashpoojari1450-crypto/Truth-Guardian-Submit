@@ -214,8 +214,9 @@ def reset():
 def health():
     return JSONResponse({"status": "healthy"})
 
-gradio_app = gr.routes.App.create_app(demo)
-fastapi_app.mount("/", gradio_app)
+demo.queue()
+gradio_app = gr.mount_gradio_app(fastapi_app, demo, path="/")
+app = fastapi_app
 
 if __name__ == "__main__":
     uvicorn.run(fastapi_app, host="0.0.0.0", port=7860)
