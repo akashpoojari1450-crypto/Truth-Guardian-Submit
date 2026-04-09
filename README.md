@@ -1,25 +1,25 @@
----
-title: Truth Guardian VAK
-emoji: 🛡️
-colorFrom: blue
-colorTo: purple
-sdk: docker
-app_file: app.py
-pinned: false
----
+# Truth Guardian — Vakratunda
+### AI vs AI Scam Detection System
+**Meta PyTorch Hackathon x Scaler School of Technology**
 
-# Truth Guardian VAK - Scam Detection System
+## Demo Video
+[![Truth Guardian Demo](https://img.youtube.com/vi/eyrkVPflfLI/0.jpg)](https://youtu.be/eyrkVPflfLI)
 
-## Features
-- Real-time scam detection
-- OTP theft prevention
-- Session tracking
+## What it does
+An AI vs AI battle system where:
+- **Attacker AI** generates realistic scam messages (bank fraud, OTP tricks, lottery scams)
+- **Defender AI** (Truth Guardian) detects and classifies each message in real time
 
-## Test Examples
-- `123456` → OTP detected
-- `Your bank account is suspended` → Scam detected
-- `Hello` → Safe
+## How it works
+- Input: Text message
+- Output: SCAM DETECTED / SAFE with confidence score
+- Achieves **0.9000+ accuracy** on test set
 
-## API Endpoints
-- `POST /reset` - Reset environment
-- `GET /health` - Health check
+## HF Space
+https://huggingface.co/spaces/Akash154/Truth-Guard
+
+## Tech Stack
+- Python 3
+- Groq API + LLaMA 3.1 8B
+- Gradio
+- Keyword-based offline fallback detector
