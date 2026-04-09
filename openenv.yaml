@@ -1,11 +1,6 @@
-name: truth-guardian-vak
-version: "1.0"
-entrypoint: server/app.py
+spec_version: 1
+name: truth_guardian_vak
+type: space
+runtime: fastapi
+app: server.app:app
 port: 7860
-endpoints:
-  - path: /reset
-    method: POST
-  - path: /predict
-    method: POST
-  - path: /
-    method: GET

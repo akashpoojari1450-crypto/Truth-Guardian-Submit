@@ -1,35 +1,87 @@
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-import uvicorn
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
 
-app = FastAPI()
+"""
+FastAPI application for the Truth Guardian Vak Environment.
 
-def predict(message):
-    if not message or len(message.strip()) == 0:
-        return {"prediction": "No input", "is_scam": False}
-    scam_keywords = [
-        "otp", "bank", "suspend", "verify", "kyc", "urgent", "lottery",
-        "prize", "won", "claim", "password", "mpin", "upi", "aadhaar",
-        "pan", "refund", "blocked", "click", "link", "legal", "action"
-    ]
-    matches = [kw for kw in scam_keywords if kw in message.lower()]
-    is_scam = len(matches) >= 2
-    if message.strip().isdigit() and 4 <= len(message.strip()) <= 8:
-        return {"prediction": "OTP DETECTED", "is_scam": True}
-    return {"prediction": "SCAM DETECTED" if is_scam else "SAFE", "is_scam": is_scam}
+This module creates an HTTP server that exposes the TruthGuardianVakEnvironment
+over HTTP and WebSocket endpoints, compatible with EnvClient.
 
-@app.post("/reset")
-def reset():
-    return JSONResponse({"status": "ok", "message": "reset successful"})
+Endpoints:
+    - POST /reset: Reset the environment
+    - POST /step: Execute an action
+    - GET /state: Get current environment state
+    - GET /schema: Get action/observation schemas
+    - WS /ws: WebSocket endpoint for persistent sessions
 
-@app.get("/")
-def root():
-    return {"status": "running", "project": "Truth Guardian Vakratunda"}
+Usage:
+    # Development (with auto-reload):
+    uvicorn server.app:app --reload --host 0.0.0.0 --port 8000
 
-@app.post("/predict")
-def predict_endpoint(data: dict):
-    result = predict(data.get("message", ""))
-    return JSONResponse(result)
+    # Production:
+    uvicorn server.app:app --host 0.0.0.0 --port 8000 --workers 4
 
-def serve():
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    # Or run directly:
+    python -m server.app
+"""
+
+try:
+    from openenv.core.env_server.http_server import create_app
+except Exception as e:  # pragma: no cover
+    raise ImportError(
+        "openenv is required for the web interface. Install dependencies with '\n    uv sync\n'"
+    ) from e
+
+try:
+    from ..models import TruthGuardianVakAction, TruthGuardianVakObservation
+    from .truth_guardian_vak_environment import TruthGuardianVakEnvironment
+except ModuleNotFoundError:
+    from models import TruthGuardianVakAction, TruthGuardianVakObservation
+    from server.truth_guardian_vak_environment import TruthGuardianVakEnvironment
+
+
+# Create the app with web interface and README integration
+app = create_app(
+    TruthGuardianVakEnvironment,
+    TruthGuardianVakAction,
+    TruthGuardianVakObservation,
+    env_name="truth_guardian_vak",
+    max_concurrent_envs=1,  # increase this number to allow more concurrent WebSocket sessions
+)
+
+
+def main(host: str = "0.0.0.0", port: int = 8000):
+    """
+    Entry point for direct execution via uv run or python -m.
+
+    This function enables running the server without Docker:
+        uv run --project . server
+        uv run --project . server --port 8001
+        python -m truth_guardian_vak.server.app
+
+    Args:
+        host: Host address to bind to (default: "0.0.0.0")
+        port: Port number to listen on (default: 8000)
+
+    For production deployments, consider using uvicorn directly with
+    multiple workers:
+        uvicorn truth_guardian_vak.server.app:app --workers 4
+    """
+    import uvicorn
+
+    uvicorn.run(app, host=host, port=port)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=8000)
+    args = parser.parse_args()
+    main(port=args.port)
+
+if __name__ == '__main__':
+    main()
