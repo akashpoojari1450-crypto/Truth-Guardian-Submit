@@ -1,5 +1,3 @@
-import os
-import sys
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -62,8 +60,6 @@ def run_inference():
     print(f"[END] task={task_name} score={correct/len(test_inputs):.4f} steps={len(test_inputs)}", flush=True)
 
 if __name__ == "__main__":
-    # Start HTTP server in background thread
     t = threading.Thread(target=start_server, daemon=True)
     t.start()
-    # Run inference
     run_inference()
