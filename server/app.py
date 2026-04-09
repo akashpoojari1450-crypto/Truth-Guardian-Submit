@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+import uvicorn
 
 app = FastAPI()
 
@@ -29,3 +30,6 @@ def root():
 def predict_endpoint(data: dict):
     result = predict(data.get("message", ""))
     return JSONResponse(result)
+
+def serve():
+    uvicorn.run(app, host="0.0.0.0", port=7860)
