@@ -1,9 +1,11 @@
 name: truth-guardian-vak
 version: "1.0"
-entrypoint: inference.py
+entrypoint: server/app.py
 port: 7860
 endpoints:
   - path: /reset
     method: POST
-  - path: /health
+  - path: /predict
+    method: POST
+  - path: /
     method: GET
