@@ -2531,10 +2531,9 @@ wheels = [
 [[package]]
 name = "truth-guardian-vak"
 version = "1.0.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
-    { name = "gradio" },
     { name = "openenv-core" },
     { name = "uvicorn" },
 ]
@@ -2542,7 +2541,6 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi" },
-    { name = "gradio", specifier = ">=4.0.0" },
     { name = "openenv-core", specifier = ">=0.2.0" },
     { name = "uvicorn" },
 ]
