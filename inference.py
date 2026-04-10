@@ -1,5 +1,7 @@
+import os
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from openai import OpenAI
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -21,19 +23,31 @@ def start_server():
     server = HTTPServer(('0.0.0.0', 7860), Handler)
     server.serve_forever()
 
-def predict(message):
-    if not message or len(message.strip()) == 0:
-        return {"prediction": "No input", "is_scam": False}
+def classify_with_llm(client, message):
+    try:
+        response = client.chat.completions.create(
+            model=os.environ.get("MODEL_NAME", "gpt-4o-mini"),
+            messages=[
+                {"role": "system", "content": "You are a scam detection expert. Reply with only SCAM or SAFE."},
+                {"role": "user", "content": f"Is this message a scam? Message: {message}"}
+            ],
+            max_tokens=10
+        )
+        result = response.choices[0].message.content.strip().upper()
+        return "SCAM" in result
+    except Exception:
+        return fallback_predict(message)
+
+def fallback_predict(message):
     scam_keywords = [
         "otp", "bank", "suspend", "verify", "kyc", "urgent", "lottery",
         "prize", "won", "claim", "password", "mpin", "upi", "aadhaar",
         "pan", "refund", "blocked", "click", "link", "legal", "action"
     ]
     matches = [kw for kw in scam_keywords if kw in message.lower()]
-    is_scam = len(matches) >= 2
     if message.strip().isdigit() and 4 <= len(message.strip()) <= 8:
-        return {"prediction": "OTP DETECTED", "is_scam": True}
-    return {"prediction": "SCAM DETECTED" if is_scam else "SAFE", "is_scam": is_scam}
+        return True
+    return len(matches) >= 2
 
 def run_inference():
     task_name = "Vakratunda"
@@ -49,11 +63,25 @@ def run_inference():
         ("The cricket match starts at 7pm today.", False),
         ("123456", True),
     ]
+
+    api_base = os.environ.get("API_BASE_URL", "")
+    api_key = os.environ.get("API_KEY", "dummy-key")
+
+    client = None
+    if api_base and api_key:
+        try:
+            client = OpenAI(base_url=api_base, api_key=api_key)
+        except Exception:
+            client = None
+
     print(f"[START] task={task_name}", flush=True)
     correct = 0
     for i, (message, expected) in enumerate(test_inputs):
-        result = predict(message)
-        reward = 1.0 if result["is_scam"] == expected else 0.0
+        if client:
+            is_scam = classify_with_llm(client, message)
+        else:
+            is_scam = fallback_predict(message)
+        reward = 1.0 if is_scam == expected else 0.0
         if reward == 1.0:
             correct += 1
         print(f"[STEP] step={i+1} reward={reward:.4f}", flush=True)
