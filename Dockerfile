@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 WORKDIR /app
-COPY app.py .
-RUN pip install fastapi uvicorn --no-cache-dir
+COPY inference.py .
+RUN pip install openai --no-cache-dir
 EXPOSE 7860
-CMD ["python", "app.py"]
+CMD ["python3", "inference.py"]
