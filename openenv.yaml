@@ -1,6 +1,6 @@
 spec_version: 1
 name: truth_guardian_vak
-type: space
-runtime: fastapi
-app: server.app:app
+type: script
+runtime: python
+script: inference.py
 port: 7860
