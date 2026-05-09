@@ -1,7 +1,13 @@
 FROM python:3.10-slim
+
 WORKDIR /app
-COPY app.py .
-COPY inference.py .
-RUN pip install fastapi uvicorn openai --no-cache-dir
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
 EXPOSE 7860
+
+# Run Gradio app directly — judges see a real UI
 CMD ["python", "app.py"]
